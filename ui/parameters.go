@@ -16,7 +16,7 @@ func SetupParameterDialog() (*fyne.Container, *video.VideoSettings) {
 	selectContainer := widget.NewSelect([]string{"mp4", "avi", "mov"}, func(value string) {
 		settings.VideoContainer = value
 	})
-	//	selectContainer.SetSelected("mp4")
+	selectContainerLabel := widget.NewLabel("Filetype")
 
 	// Create select box
 	selectVFormat := widget.NewSelect([]string{"H.264/MPEG-4 AVC", "H.265/HEVC", "AV1", "ProRes", "AVI"}, func(value string) {
@@ -41,16 +41,19 @@ func SetupParameterDialog() (*fyne.Container, *video.VideoSettings) {
 			settings.VideoFormat = "avi"
 		}
 	})
+	selectVFormatLabel := widget.NewLabel("Codec   ")
 
 	// Create entry fields
 	crf := widget.NewEntry()
 	crf.SetPlaceHolder("CRF")
 	crf.SetText("23")
+	crfLabel := widget.NewLabel("CRF 0..50")
 
 	// Create select box
 	selectPreset := widget.NewSelect([]string{"ultrafast", "fast", "medium", "slow", "ultraslow", ""}, func(value string) {
 		settings.Preset = value
 	})
+	selectPresetLabel := widget.NewLabel("Speed   ")
 
 	// Create select box
 	selectAFormat := widget.NewSelect([]string{"AAC", "WAV", "MP3"}, func(value string) {
@@ -64,6 +67,7 @@ func SetupParameterDialog() (*fyne.Container, *video.VideoSettings) {
 		}
 		settings.AQuality = "128k"
 	})
+	selectAFormatLabel := widget.NewLabel("Audio Format")
 
 	// Profiles select box
 	profiles := widget.NewSelect([]string{"H.264/AAC/mp4", "HEVC/AAC/mp4", "AV1/AAC/mp4", "ProRes/AAC/mov"}, func(value string) {
@@ -102,24 +106,26 @@ func SetupParameterDialog() (*fyne.Container, *video.VideoSettings) {
 			settings.Profile = "3"
 		}
 	})
-	preSelect := container.NewHBox(
-		widget.NewLabel("Profiles"),
-		profiles,
-	)
+	profilesLabel := widget.NewLabel("Profiles")
 	profiles.SetSelected("H.264/AAC/mp4")
 
 	// Create a container for the dialog content
-	dialogContent := container.NewVBox(
-		preSelect,
-		widget.NewLabel(""),
+
+	dialogContent := container.NewGridWithColumns(2,
+		profilesLabel,
+		profiles,
 		widget.NewSeparator(),
-		widget.NewLabel(""),
+		widget.NewSeparator(),
+		selectContainerLabel,
 		selectContainer,
+		selectVFormatLabel,
 		selectVFormat,
+		crfLabel,
 		crf,
+		selectPresetLabel,
 		selectPreset,
+		selectAFormatLabel,
 		selectAFormat,
-		widget.NewSeparator(),
 	)
 	return dialogContent, settings
 }

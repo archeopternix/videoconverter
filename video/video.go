@@ -45,10 +45,15 @@ func ConvertVideo(inputFile, outputFile string, settings VideoSettings) error {
 			"crf":    settings.CRF,         // Medium quality audio bitrate
 		}
 	}
+
+	buf := bytes.NewBuffer(nil)
+
 	err := ffmpeg_go.Input(inputFile).
 		Output(outputFile,
 			args,
-		).Run()
+		).
+		WithOutput(buf, nil).
+		Run()
 
 	return err
 }
