@@ -65,6 +65,7 @@ func CheckIfVideo(filePath string) (bool, error) {
 		return false, fmt.Errorf("failed to read file: %w", err)
 	}
 	mime := mimetype.Detect(data)
+
 	if strings.Contains(mime.String(), "video") {
 		return true, nil
 	}
