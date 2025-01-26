@@ -3,8 +3,11 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	ui "videoconverter/ui"
 	video "videoconverter/video"
+
+	"path/filepath"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -14,9 +17,12 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// ffmpeg -i "/home/archeopternix/Videos/2002 Weihnachten Vasoldsberg_opt1.avi" -b:a 128k -c:a aac -c:v prores -profile:v 3 -vf format=yuv420p "/home/archeopternix/Videos/NEU/2002 Weihnachten Vasoldsberg_opt1.mov"
+
 func main() {
 	myApp := app.NewWithID("Video Converter")
 	myWindow := myApp.NewWindow("Drag and Drop Example")
+	var videoSettings *video.VideoSettings
 
 	// Create a list to display images and file paths
 	ui.List = ui.NewVideoList() //container.NewVBox()
@@ -77,124 +83,14 @@ func main() {
 		}, myWindow).Show()
 	})
 
-	startCoding := widget.NewToolbarAction(theme.DocumentCreateIcon(), func() {
-		settings := video.VideoSettings{}
-
-		// Container select box
-		selectContainer := widget.NewSelect([]string{"mp4", "avi", "mov"}, func(value string) {
-			settings.VideoContainer = value
-		})
-		//	selectContainer.SetSelected("mp4")
-
-		// Create select box
-		selectVFormat := widget.NewSelect([]string{"H.264/MPEG-4 AVC", "H.265/HEVC", "AV1", "ProRes", "AVI"}, func(value string) {
-			switch value {
-			case "H.264/MPEG-4 AVC":
-				settings.Profile = ""
-				settings.VideoFormat = "libx264"
-				settings.CRF = "23"
-			case "H.265/HEVC":
-				settings.Profile = ""
-				settings.VideoFormat = "libx265"
-				settings.CRF = "28"
-			case "AV1":
-				settings.Profile = ""
-				settings.VideoFormat = "libaom-av1"
-				settings.CRF = "30"
-			case "ProRes":
-				settings.Profile = "3"
-				settings.VideoFormat = "prores"
-			default:
-				settings.Profile = ""
-				settings.VideoFormat = "avi"
-			}
-		})
-
-		// Create entry fields
-		crf := widget.NewEntry()
-		crf.SetPlaceHolder("CRF")
-		crf.SetText("23")
-
-		// Create select box
-		selectPreset := widget.NewSelect([]string{"ultrafast", "fast", "medium", "slow", "ultraslow", ""}, func(value string) {
-			settings.Preset = value
-		})
-
-		// Create select box
-		selectAFormat := widget.NewSelect([]string{"AAC", "WAV", "MP3"}, func(value string) {
-			switch value {
-			case "AAC":
-				settings.AudioFormat = "aac"
-			case "WAV":
-				settings.AudioFormat = "wav"
-			case "MP3":
-				settings.AudioFormat = "mp3"
-			}
-			settings.AQuality = "128k"
-		})
-		selectAFormat.SetSelected("AAC")
-
-		// Container select box
-		preSelect := widget.NewSelect([]string{"H.264/AAC/mp4", "HEVC/AAC/mp4", "AV1/AAC/mp4", "ProRes/AAC/mov"}, func(value string) {
-			switch value {
-			case "H.264/AAC/mp4":
-				selectContainer.SetSelected("mp4")
-				selectVFormat.SetSelected("H.264/MPEG-4 AVC")
-				settings.CRF = "23"
-				selectPreset.SetSelected("medium")
-				selectAFormat.SetSelected("AAC")
-				settings.Profile = ""
-
-			case "HEVC/AAC/mp4":
-				selectContainer.SetSelected("mp4")
-				selectVFormat.SetSelected("H.265/HEVC")
-				settings.CRF = "28"
-				selectPreset.SetSelected("medium")
-				selectAFormat.SetSelected("AAC")
-				settings.Profile = ""
-			case "AV1/AAC/mp4":
-				selectContainer.SetSelected("mp4")
-				selectVFormat.SetSelected("AV1")
-				settings.CRF = "30"
-				selectPreset.SetSelected("medium")
-				selectAFormat.SetSelected("AAC")
-				settings.Profile = ""
-			case "ProRes/AAC/mov":
-				selectContainer.SetSelected("mov")
-				selectVFormat.SetSelected("ProRes")
-				settings.CRF = ""
-				selectPreset.SetSelected("")
-				selectAFormat.SetSelected("AAC")
-				settings.Profile = "3"
-			}
-		})
-		preSelect.SetSelected("H.264/AAC/mp4")
-
-		path := widget.NewEntry()
-		path.SetPlaceHolder("target path for converted files")
-
-		// Create a container for the dialog content
-		dialogContent := container.NewVBox(
-			preSelect,
-			widget.NewSeparator(),
-			selectContainer,
-			selectVFormat,
-			crf,
-			selectPreset,
-			selectAFormat,
-			widget.NewSeparator(),
-			path,
-		)
-
+	setParameter := widget.NewToolbarAction(theme.DocumentCreateIcon(), func() {
+		dialogContent, settings := ui.SetupParameterDialog()
 		dialogContent.Resize(fyne.NewSize(500, 400))
-		dialog.ShowCustomConfirm("Start Coding", "Run", "Close", dialogContent, func(run bool) {
-			if run {
-				video.ConvertVideo("D:", "D:", settings)
-				fmt.Println("Run button clicked")
-			} else {
-				fmt.Println("Cancel button clicked")
+		dialog.ShowCustomConfirm("Start Coding", "Save", "Cancel", dialogContent, func(ok bool) {
+			if ok {
+				videoSettings = settings
 			}
-			// Add your run logic here
+
 		}, myWindow)
 	})
 
@@ -202,9 +98,50 @@ func main() {
 		myApp.Quit()
 	})
 
+	run := widget.NewToolbarAction(theme.DownloadIcon(), func() {
+		if videoSettings == nil {
+			dialog.ShowError(fmt.Errorf("Video Settings are not set"), myWindow)
+			return
+		}
+
+		if len(ui.List.VideoFiles) < 1 {
+			dialog.ShowError(fmt.Errorf("No Videos to convert"), myWindow)
+			return
+		}
+
+		dialog.NewFolderOpen(func(uri fyne.ListableURI, err error) {
+			if uri == nil {
+				return // User cancelled
+			}
+			if err != nil {
+				dialog.ShowError(err, myWindow)
+				return
+			}
+
+			fmt.Println(uri.Path())
+			progressBar.Show()
+			progressBar.Max = float64(len(ui.List.VideoFiles))
+			progressBar.SetValue(0)
+
+			succ := 0
+			for i, file := range ui.List.VideoFiles {
+				targetpath := filepath.Join(uri.Path(), fileNameWithoutExtension(file.Uri.Name())+"."+videoSettings.VideoContainer)
+				if err := video.ConvertVideo(file.Uri.Path(), targetpath, *videoSettings); err != nil {
+					fmt.Println(err)
+					continue
+				}
+				progressBar.SetValue(float64(i))
+				succ += 1
+			}
+			progressBar.Hide()
+			dialog.ShowInformation("Conversion to "+videoSettings.VideoContainer, fmt.Sprintf("%d/%d files converted successfully", succ, len(ui.List.VideoFiles)), myWindow)
+		}, myWindow).Show()
+	})
+
 	toolbar := widget.NewToolbar(
 		openFile,
-		startCoding,
+		run,
+		setParameter,
 		exit,
 	)
 
@@ -213,4 +150,8 @@ func main() {
 	myWindow.SetContent(content)
 	myWindow.Resize(fyne.NewSize(800, 600))
 	myWindow.ShowAndRun()
+}
+
+func fileNameWithoutExtension(fileName string) string {
+	return strings.TrimSuffix(filepath.Base(fileName), filepath.Ext(fileName))
 }

@@ -25,15 +25,16 @@ type VideoSettings struct {
 	AQuality       string
 }
 
-func ConvertVideo(inputFile, outputFile string, settings VideoSettings) (err error) {
+func ConvertVideo(inputFile, outputFile string, settings VideoSettings) error {
 	var args ffmpeg_go.KwArgs
 	switch settings.VideoFormat {
 	case "prores":
 		args = ffmpeg_go.KwArgs{
-			"c:v":     settings.VideoFormat,
-			"c:a":     settings.AudioFormat, // Use AAC codec for audio
-			"b:a":     settings.AQuality,    // Medium quality audio bitrate
-			"profile": settings.Profile,     // Medium quality audio bitrate
+			"c:v":       settings.VideoFormat,
+			"c:a":       settings.AudioFormat, // Use AAC codec for audio
+			"b:a":       settings.AQuality,    // Medium quality audio bitrate
+			"profile:v": settings.Profile,     // Medium quality audio bitrate
+			"vf":        "format=yuv420p",
 		}
 	default:
 		args = ffmpeg_go.KwArgs{
@@ -44,12 +45,10 @@ func ConvertVideo(inputFile, outputFile string, settings VideoSettings) (err err
 			"crf":    settings.CRF,         // Medium quality audio bitrate
 		}
 	}
-	//	err := ffmpeg_go.Input(inputFile).
-	fmt.Println(ffmpeg_go.Input(inputFile).
+	err := ffmpeg_go.Input(inputFile).
 		Output(outputFile,
 			args,
-		).String())
-	//	Run()
+		).Run()
 
 	return err
 }
