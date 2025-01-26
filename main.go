@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -14,6 +15,76 @@ import (
 )
 
 const frameTime = "00:00:01.000" // Time position (HH:MM:SS.mmm) to extract the frame
+
+type VideoFile struct {
+	Uri   fyne.URI
+	Image image.Image
+	Row   *fyne.Container
+}
+
+type VideoList struct {
+	container.Scroll
+	list       *fyne.Container
+	VideoFiles []VideoFile
+}
+
+func NewVideoList() *VideoList {
+	list := container.NewVBox()
+	return &VideoList{
+		Scroll: *container.NewScroll(list),
+		list:   list,
+	}
+}
+
+func (v *VideoList) Delete(i int) {
+	v.list.Remove(v.VideoFiles[i].Row)
+	v.VideoFiles = append(v.VideoFiles[:i], v.VideoFiles[i+1:]...)
+	v.Refresh()
+}
+
+func (v *VideoList) Add(uri fyne.URI) error {
+	// Check if the file is a video
+	if isVideo, err := checkIfVideo(uri.Path()); err != nil {
+		return fmt.Errorf("Error checking file type: %v", err)
+	} else if !isVideo {
+		return fmt.Errorf("The file '%s' is not a video.", uri.Path())
+	}
+
+	// Extract frame from video
+	frame, err := extractFrame(uri.Path(), frameTime)
+	if err != nil {
+		return fmt.Errorf("Error extracting frame: %v", err)
+	}
+
+	var cnt *fyne.Container
+
+	// Create a fyne.Image
+	image := canvas.NewImageFromImage(frame)
+	image.SetMinSize(fyne.Size{Width: 64, Height: 48})
+	image.FillMode = canvas.ImageFillContain
+
+	// Create a label with the file path
+	label := widget.NewLabel(uri.Name())
+
+	// Create an button to delete the entry
+	button := widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), func() {
+		v.Delete(len(v.VideoFiles))
+	})
+
+	cnt = container.NewHBox(button, image, label)
+
+	// populate VideoFile structure
+	newFile := VideoFile{
+		Uri:   uri,
+		Image: frame,
+		Row:   cnt,
+	}
+	v.VideoFiles = append(v.VideoFiles, newFile)
+
+	v.list.Add(cnt)
+
+	return nil
+}
 
 func main() {
 	myApp := app.NewWithID("Video Converter")
