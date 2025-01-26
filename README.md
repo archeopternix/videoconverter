@@ -43,6 +43,7 @@ A simple video converter application built with Go and Fyne.
 ## Dependencies
 
 - [Fyne](https://fyne.io/) - A cross-platform GUI toolkit for Go.
+- [ffmpeg-go](https://github.com/u2takey/ffmpeg-go) - ffmpeg binding for Go.
 
 ## License
 
