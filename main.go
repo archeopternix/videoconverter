@@ -3,98 +3,26 @@ package main
 
 import (
 	"fmt"
-	"image"
+	ui "videoconverter/ui"
+	video "videoconverter/video"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
-const frameTime = "00:00:01.000" // Time position (HH:MM:SS.mmm) to extract the frame
-
-type VideoFile struct {
-	Uri   fyne.URI
-	Image image.Image
-	Row   *fyne.Container
-}
-
-type VideoList struct {
-	container.Scroll
-	list       *fyne.Container
-	VideoFiles []VideoFile
-}
-
-func NewVideoList() *VideoList {
-	list := container.NewVBox()
-	return &VideoList{
-		Scroll: *container.NewScroll(list),
-		list:   list,
-	}
-}
-
-func (v *VideoList) Delete(i int) {
-	v.list.Remove(v.VideoFiles[i].Row)
-	v.VideoFiles = append(v.VideoFiles[:i], v.VideoFiles[i+1:]...)
-	v.Refresh()
-}
-
-func (v *VideoList) Add(uri fyne.URI) error {
-	// Check if the file is a video
-	if isVideo, err := checkIfVideo(uri.Path()); err != nil {
-		return fmt.Errorf("Error checking file type: %v", err)
-	} else if !isVideo {
-		return fmt.Errorf("The file '%s' is not a video.", uri.Path())
-	}
-
-	// Extract frame from video
-	frame, err := extractFrame(uri.Path(), frameTime)
-	if err != nil {
-		return fmt.Errorf("Error extracting frame: %v", err)
-	}
-
-	var cnt *fyne.Container
-
-	// Create a fyne.Image
-	image := canvas.NewImageFromImage(frame)
-	image.SetMinSize(fyne.Size{Width: 64, Height: 48})
-	image.FillMode = canvas.ImageFillContain
-
-	// Create a label with the file path
-	label := widget.NewLabel(uri.Name())
-
-	// Create an button to delete the entry
-	button := widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), func() {
-		v.Delete(len(v.VideoFiles))
-	})
-
-	cnt = container.NewHBox(button, image, label)
-
-	// populate VideoFile structure
-	newFile := VideoFile{
-		Uri:   uri,
-		Image: frame,
-		Row:   cnt,
-	}
-	v.VideoFiles = append(v.VideoFiles, newFile)
-
-	v.list.Add(cnt)
-
-	return nil
-}
-
 func main() {
 	myApp := app.NewWithID("Video Converter")
 	myWindow := myApp.NewWindow("Drag and Drop Example")
 
 	// Create a list to display images and file paths
-	list := container.NewVBox()
+	ui.List = ui.NewVideoList() //container.NewVBox()
 
 	// Wrap the list in a scroll container
-	scrollList := container.NewScroll(list)
+	scrollList := container.NewScroll(ui.List.Container)
 
 	// Create a progress bar
 	progressBar := widget.NewProgressBar()
@@ -105,12 +33,22 @@ func main() {
 		progressBar.SetValue(0)
 
 		for i, uri := range files {
-			if err := addUriToList(list, uri); err != nil {
-				fmt.Println(err)
+			v, err := ui.NewVideoFile(uri)
+			if err != nil {
+				dialog.ShowError(err, myWindow)
+				continue
 			}
+
+			err = ui.List.Add(v)
+			if err != nil {
+				dialog.ShowError(err, myWindow)
+				continue
+			}
+
 			// update progressbar
 			progressBar.SetValue(float64(i + 1))
 		}
+		ui.List.Refresh()
 		progressBar.Hide()
 	})
 
@@ -125,15 +63,22 @@ func main() {
 			}
 			defer reader.Close()
 
-			if err := addUriToList(list, reader.URI()); err != nil {
-				fmt.Println(err)
-			}
+			progressBar.Show()
+			progressBar.Max = 1
+			progressBar.SetValue(0)
 
+			if v, err := ui.NewVideoFile(reader.URI()); err == nil {
+				ui.List.Add(v)
+			} else {
+				dialog.ShowError(err, myWindow)
+			}
+			progressBar.SetValue(1)
+			progressBar.Hide()
 		}, myWindow).Show()
 	})
 
 	startCoding := widget.NewToolbarAction(theme.DocumentCreateIcon(), func() {
-		settings := VideoSettings{}
+		settings := video.VideoSettings{}
 
 		// Container select box
 		selectContainer := widget.NewSelect([]string{"mp4", "avi", "mov"}, func(value string) {
@@ -244,7 +189,7 @@ func main() {
 		dialogContent.Resize(fyne.NewSize(500, 400))
 		dialog.ShowCustomConfirm("Start Coding", "Run", "Close", dialogContent, func(run bool) {
 			if run {
-				convertVideo("D:", "D:", settings)
+				video.ConvertVideo("D:", "D:", settings)
 				fmt.Println("Run button clicked")
 			} else {
 				fmt.Println("Cancel button clicked")
@@ -268,41 +213,4 @@ func main() {
 	myWindow.SetContent(content)
 	myWindow.Resize(fyne.NewSize(800, 600))
 	myWindow.ShowAndRun()
-}
-
-func addUriToList(list *fyne.Container, uri fyne.URI) error {
-	fmt.Println(uri.Path())
-
-	// Check if the file is a video
-	if isVideo, err := checkIfVideo(uri.Path()); err != nil {
-		return fmt.Errorf("Error checking file type: %v", err)
-	} else if !isVideo {
-		return fmt.Errorf("The file is not a video.")
-	}
-
-	// Extract frame from video
-	frame, err := extractFrame(uri.Path(), frameTime)
-	if err != nil {
-		return fmt.Errorf("Error extracting frame: %v", err)
-	}
-
-	var cnt *fyne.Container
-
-	// Create an image
-	image := canvas.NewImageFromImage(frame)
-	image.SetMinSize(fyne.Size{Width: 64, Height: 48})
-	image.FillMode = canvas.ImageFillContain
-
-	// Create a label with the file path
-	label := widget.NewLabel(uri.Path())
-
-	// Create an button to delete the entry
-	button := widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
-		list.Remove(cnt)
-	})
-
-	cnt = container.NewHBox(button, image, label)
-
-	list.Add(cnt)
-	return nil
 }
