@@ -8,7 +8,7 @@ import (
 	"image/jpeg"
 	"io/ioutil"
 
-	//	"os"
+	"os"
 	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
@@ -36,15 +36,43 @@ func ConvertVideo(inputFile, outputFile string, settings VideoSettings) error {
 			"profile:v": settings.Profile,     // Medium quality audio bitrate
 			"vf":        "format=yuv420p",
 		}
+	case "libsvtav1":
+		presmap := map[string]string{
+			"ultrafast": "0",
+			"superfast": "1",
+			"veryfast":  "2",
+			"faster":    "3",
+			"fast":      "4",
+			"medium":    "5",
+			"slow":      "6",
+			"slower":    "7",
+			"veryslow":  "8",
+		}
+
+		preset, ok := presmap[settings.Preset]
+		if !ok {
+			preset = "5"
+		}
+
+		args = ffmpeg_go.KwArgs{
+			"c:v":     settings.VideoFormat,
+			"c:a":     settings.AudioFormat, // Use AAC codec for audio
+			"b:a":     settings.AQuality,    // Medium quality audio bitrate
+			"preset":  preset,               // Medium quality audio bitrate
+			"crf":     settings.CRF,         // Medium quality audio bitrate
+			"pix_fmt": "yuv420p",            // Standard pixel format
+		}
 	default:
 		args = ffmpeg_go.KwArgs{
-			"c:v":    settings.VideoFormat,
-			"c:a":    settings.AudioFormat, // Use AAC codec for audio
-			"b:a":    settings.AQuality,    // Medium quality audio bitrate
-			"preset": settings.Preset,      // Medium quality audio bitrate
-			"crf":    settings.CRF,         // Medium quality audio bitrate
+			"c:v":     settings.VideoFormat,
+			"c:a":     settings.AudioFormat, // Use AAC codec for audio
+			"b:a":     settings.AQuality,    // Medium quality audio bitrate
+			"preset":  settings.Preset,      // Medium quality audio bitrate
+			"crf":     settings.CRF,         // Medium quality audio bitrate
+			"pix_fmt": "yuv420p",            // Standard pixel format
 		}
 	}
+	// ffmpeg -i "in.avi" -c:v libsvtav1 -crf 28 -preset 6 -vf scale=720:576 -r 25 -strict experimental  -c:a aac -b:a 192k "out.mp4"
 
 	buf := bytes.NewBuffer(nil)
 
@@ -52,7 +80,7 @@ func ConvertVideo(inputFile, outputFile string, settings VideoSettings) error {
 		Output(outputFile,
 			args,
 		).
-		WithOutput(buf, nil).
+		WithOutput(buf, os.Stdout).
 		Run()
 
 	return err

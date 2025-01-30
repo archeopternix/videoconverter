@@ -17,6 +17,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+// ffmpeg -i "/home/archeopternix/Videos/2002 Weihnachten Vasoldsberg_opt2a.avi" -b:a 128k -c:a aac -c:v libx264 -crf 21 -pix_fmt yuv420p -preset medium "/home/archeopternix/Videos/2002 Weihnachten Vasoldsberg_opt2a.mp4"
 // ffmpeg -i "/home/archeopternix/Videos/2002 Weihnachten Vasoldsberg_opt1.avi" -b:a 128k -c:a aac -c:v prores -profile:v 3 -vf format=yuv420p "/home/archeopternix/Videos/NEU/2002 Weihnachten Vasoldsberg_opt1.mov"
 
 func main() {

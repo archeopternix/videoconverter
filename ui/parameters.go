@@ -24,15 +24,15 @@ func SetupParameterDialog() (*fyne.Container, *video.VideoSettings) {
 		case "H.264/MPEG-4 AVC":
 			settings.Profile = ""
 			settings.VideoFormat = "libx264"
-			settings.CRF = "23"
+			settings.CRF = "21"
 		case "H.265/HEVC":
 			settings.Profile = ""
 			settings.VideoFormat = "libx265"
-			settings.CRF = "28"
+			settings.CRF = "25"
 		case "AV1":
 			settings.Profile = ""
-			settings.VideoFormat = "libaom-av1"
-			settings.CRF = "30"
+			settings.VideoFormat = "libsvtav1"
+			settings.CRF = "26"
 		case "ProRes":
 			settings.Profile = "3"
 			settings.VideoFormat = "prores"
@@ -50,7 +50,7 @@ func SetupParameterDialog() (*fyne.Container, *video.VideoSettings) {
 	crfLabel := widget.NewLabel("CRF 0..50")
 
 	// Create select box
-	selectPreset := widget.NewSelect([]string{"ultrafast", "fast", "medium", "slow", "ultraslow", ""}, func(value string) {
+	selectPreset := widget.NewSelect([]string{"ultrafast", "faster", "medium", "slow", "ultraslow", ""}, func(value string) {
 		settings.Preset = value
 	})
 	selectPresetLabel := widget.NewLabel("Speed   ")
@@ -77,24 +77,24 @@ func SetupParameterDialog() (*fyne.Container, *video.VideoSettings) {
 			selectVFormat.SetSelected("H.264/MPEG-4 AVC")
 			selectPreset.SetSelected("medium")
 			selectAFormat.SetSelected("AAC")
-			crf.SetText("23")
-			settings.CRF = "23"
+			crf.SetText("21")
+			settings.CRF = "21"
 			settings.Profile = ""
 		case "HEVC/AAC/mp4":
 			selectContainer.SetSelected("mp4")
 			selectVFormat.SetSelected("H.265/HEVC")
 			selectPreset.SetSelected("medium")
 			selectAFormat.SetSelected("AAC")
-			crf.SetText("28")
-			settings.CRF = "28"
+			crf.SetText("25")
+			settings.CRF = "25"
 			settings.Profile = ""
 		case "AV1/AAC/mp4":
 			selectContainer.SetSelected("mp4")
 			selectVFormat.SetSelected("AV1")
 			selectPreset.SetSelected("medium")
 			selectAFormat.SetSelected("AAC")
-			crf.SetText("30")
-			settings.CRF = "30"
+			crf.SetText("28")
+			settings.CRF = "28"
 			settings.Profile = ""
 		case "ProRes/AAC/mov":
 			selectContainer.SetSelected("mov")
